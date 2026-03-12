@@ -335,29 +335,29 @@ Once stolen, data is sent out through various channels. Attackers will try diffe
 
 ### Chain 1 — "The Classic"
 *The most common path from repository clone to code execution.*
-
+```
 E1 (Clone Malicious Repo)
 → W1 (Project contains code with Prompt Injection)
 → TB1 (AI reads the poisoned file)
 → E3 (AI writes a new file)
 → C1 (The written file modifies a config, like settings.json)
 → E1 (Config change triggers command execution)
-
+```
 
 ### Chain 3 — "The Exfil Express"
 *The shortest path from repository clone to data theft.*
-
+```
 E1 (Clone Malicious Repo)
 → W3 (README.md file contains Prompt Injection)
 → TB1 (AI reads the README and follows the instruction)
 → E1 (AI runs a terminal command, like ping)
 → DNS Queries (Data is sent to attacker server)
 → E2 (Attacker collects the data)
-
+```
 
 ### Chain 5 — "The Long Con"
 *A time-delayed attack that abuses trust.*
-
+```
 P3 (User approves a BENIGN config in a trusted workspace)
 → (Time passes...)
 → E1 (Attacker updates the remote repository with malicious config)
@@ -365,7 +365,7 @@ P3 (User approves a BENIGN config in a trusted workspace)
 → W2 (The new, malicious config is loaded)
 → C1 (The config is processed WITHOUT re-approval, as the path is "trusted")
 → E1 (The malicious config executes commands)
-
+```
 
 ---
 
