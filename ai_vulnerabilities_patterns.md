@@ -1028,14 +1028,14 @@ Invasion of Privacy defense is **strong** because we **block all egress channels
 
 ## 🎯 Key Takeaway
 
-> **The AI IDE security model, when properly implemented with all 9 gates, achieves Strong protection for the most critical attack classes (System Modification and Invasion of Privacy), matching Java's original security goals while acknowledging the inherent limitations in preventing DoS and antagonism.**
+> **The AI IDE security model, when properly implemented with all 9 gates, achieves Strong protection for the most critical attack classes (System Modification and Invasion of Privacy), matching security goals while acknowledging the inherent limitations in preventing DoS and antagonism.**
 
 | Attack Class | Criticality | Protection Level | Verdict |
 | :--- | :---: | :---: | :--- |
-| **System Modification** | 🔴 HIGH | 🟢 Strong | ✅ Meets Java standard |
-| **Invasion of Privacy** | 🟠 HIGH | 🟢 Strong | ✅ Meets Java standard |
-| **Denial of Service** | 🟡 MEDIUM | 🟡 Weak | ⚠️ Same limitation as Java |
-| **Antagonism** | 🟢 LOW | 🟡 Weak | ⚠️ Same limitation as Java |
+| **System Modification** | 🔴 HIGH | 🟢 Strong | ✅ Meets standard |
+| **Invasion of Privacy** | 🟠 HIGH | 🟢 Strong | ✅ Meets standard |
+| **Denial of Service** | 🟡 MEDIUM | 🟡 Weak | ⚠️ Same limitation |
+| **Antagonism** | 🟢 LOW | 🟡 Weak | ⚠️ Same limitation |
 
 **The framework acknowledges that perfect security is impossible, but layered defenses ensure that the most severe attacks are also the best defended.**
 
