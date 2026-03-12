@@ -10,3 +10,4 @@
 | **Silent Branding** | Image-caption pairs | Image generation | Unwanted logos appear |
 | **Losing Control** | ControlNet training | Specific pose patterns | NSFW from normal inputs |
 
+[!threat-model-dfd.svg](threat-model-dfd.svg)
