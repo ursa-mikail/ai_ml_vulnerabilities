@@ -596,5 +596,307 @@ This is the answer: decouple the agent from the developer's filesystem through m
 - The most sensitive assets (global configs, SSH keys, production code) are never exposed to the agent environment
 
 
+# AI IDE Security Framework: Attack Classes & Defenses
 
+This framework categorizes AI IDE attacks into four classes based on severity and impact, mapping each to the affected vulnerability patterns and defensive gates.
+
+---
+
+## 🎯 Attack Class Matrix
+
+| ATTACK CLASS | EXPLANATION AND CONSEQUENCES | AFFECTED VULNERABILITY PATTERNS | DEFENSE GATES | DEFENSE STRENGTH |
+| :--- | :--- | :--- | :--- | :--- |
+| **System Modification** | The most severe class. Attackers gain arbitrary code execution on the host machine. Can lead to full system compromise, ransomware, persistent backdoors, and lateral movement across the developer's infrastructure. **Consequences: Severe** | **1.1-1.13** (All Arbitrary Code Execution): MCP Poisoning, LSP Config, Tools Auto-Loading, Argument Injection, Hooks, App-Specific Config, Race Conditions, Filter Bypasses, Binary Planting, Safe Executable Abuse, Env Var Prefixing, IDE Settings Abuse, Local Network Services<br><br>**2.3** (PI → Config Modification)<br><br>**4.1-4.3** (All Trust Persistence) | **G1** (Config Approval)<br>**G2** (Init Safety)<br>**G3** (Trust Integrity)<br>**G4** (File Write Restrictions)<br>**G5** (Command Robustness)<br>**G6** (Binary Security)<br>**G9** (Network Security) | **Strong**<br>(Multiple overlapping gates) |
+| **Invasion of Privacy** | Data exfiltration attacks. If you value your IP, API keys, or customer data, this class is particularly odious. Attackers steal environment variables, source code, credentials, and proprietary algorithms. Can include forging requests to internal services. **Consequences: Moderate to Severe** | **3.1** (DNS/Ping Exfil)<br>**3.2** (File Write Exfil)<br>**3.3** (Silent Terminal Exfil)<br>**3.4** (Rendered Content Exfil)<br>**3.5** (Model Provider Redirect)<br>**3.6** (Git Exfil)<br><br>**2.1-2.2** (Adversarial Dirs, Prompt Templates — as delivery mechanisms) | **G7** (Input Sanitization)<br>**G8** (Outbound Controls)<br>**G4** (File Write Restrictions) | **Strong**<br>(Comprehensive outbound filtering) |
+| **Denial of Service** | Resource exhaustion attacks. These can bring a developer's machine to a standstill, halt CI/CD pipelines, or consume excessive cloud credits. May require reboot or VM termination. Includes fork bombs, memory exhaustion, disk filling, and API rate limit exhaustion. **Consequences: Moderate** | *N/A in original 25 (But implied by argument injection allowing `:(){ :|:& };:`, disk writes, or cryptominers)*<br><br>**1.4** (Argument Injection — can launch fork bombs)<br>**1.8** (Filter Bypasses — can run resource hogs)<br>**1.3** (Tools Auto-Loading — can load infinite loops) | **G5** (Command Robustness — blocks fork bombs)<br>**G1** (Config Approval — blocks crypto miners)<br>Resource Limits in Bubblewrap/gVisor | **Weak**<br>(Java's assessment holds true — perfect prevention is difficult) |
+| **Antagonism** | Merely annoying attacks. The most commonly encountered class. Includes `rm -rf /` jokes that fail due to permissions, infinite notification popups, changing editor themes, playing sounds, or deleting temporary files. May require restart of IDE. **Consequences: Light to Moderate** | **2.1** (Adversarial Directory Names — can trick AI into deleting files)<br>**2.5** (Hidden Instructions — can make AI behave erratically)<br>**1.10** (Safe Executable Abuse — can make `git status` delete files) | **G7** (Input Sanitization)<br>**G4** (File Write Restrictions)<br>**G5** (Command Robustness) | **Weak**<br>(Annoyance is hard to prevent without breaking functionality) |
+
+---
+
+## 📊 Attack Class Summary
+
+| Attack Class | Severity | Number of Affected Patterns | Primary Defense Gates | Defense Strength |
+| :--- | :---: | :---: | :--- | :---: |
+| **System Modification** | 🔴 Severe | ~20 patterns | G1, G2, G3, G4, G5, G6, G9 | ✅ Strong |
+| **Invasion of Privacy** | 🟠 Moderate to Severe | ~8 patterns | G7, G8, G4 | ✅ Strong |
+| **Denial of Service** | 🟡 Moderate | ~3 patterns (implied) | G5, G1, Resource Limits | ⚠️ Weak |
+| **Antagonism** | 🟢 Light to Moderate | ~3 patterns | G7, G4, G5 | ⚠️ Weak |
+
+---
+
+## 🔄 Attack Class Breakdown by Vulnerability Category
+
+```
+SYSTEM MODIFICATION (Severe)
+├── 1.1-1.13 All Code Execution patterns
+├── 2.3 PI → Config Modification
+└── 4.1-4.3 All Trust Persistence
+│
+▼
+Protected by: G1, G2, G3, G4, G5, G6, G9
+
+INVASION OF PRIVACY (Moderate-Severe)
+├── 3.1 DNS/Ping Exfil
+├── 3.2 File Write Exfil
+├── 3.3 Silent Terminal Exfil
+├── 3.4 Rendered Content Exfil
+├── 3.5 Model Provider Redirect
+├── 3.6 Git Exfil
+└── 2.1-2.2 Delivery Mechanisms
+│
+▼
+Protected by: G7, G8, G4
+
+DENIAL OF SERVICE (Moderate)
+├── 1.4 Argument Injection (fork bombs)
+├── 1.8 Filter Bypasses (resource hogs)
+└── 1.3 Tools Auto-Loading (infinite loops)
+│
+▼
+Protected by: G5, G1, Resource Limits
+⚠️ Perfect prevention difficult
+
+ANTAGONISM (Light-Moderate)
+├── 2.1 Adversarial Directory Names
+├── 2.5 Hidden Instructions
+└── 1.10 Safe Executable Abuse
+│
+▼
+Protected by: G7, G4, G5
+⚠️ Annoyance hard to prevent
+
+```
+
+
+---
+
+## 🛡️ Defense Coverage by Attack Class
+
+| Defense Gate | System Modification | Invasion of Privacy | Denial of Service | Antagonism |
+| :--- | :---: | :---: | :---: | :---: |
+| **G1 — Config Approval** | ✅ | ⬜ | ✅ | ⬜ |
+| **G2 — Init Safety** | ✅ | ⬜ | ⬜ | ⬜ |
+| **G3 — Trust Integrity** | ✅ | ⬜ | ⬜ | ⬜ |
+| **G4 — File Write Restrictions** | ✅ | ✅ | ⬜ | ✅ |
+| **G5 — Command Robustness** | ✅ | ⬜ | ✅ | ✅ |
+| **G6 — Binary Security** | ✅ | ⬜ | ⬜ | ⬜ |
+| **G7 — Input Sanitization** | ⬜ | ✅ | ⬜ | ✅ |
+| **G8 — Outbound Controls** | ⬜ | ✅ | ⬜ | ⬜ |
+| **G9 — Network Security** | ✅ | ⬜ | ⬜ | ⬜ |
+| **Resource Limits** | ⬜ | ⬜ | ✅ | ⬜ |
+
+---
+
+## 🔑 Key Insights
+
+| Insight | Explanation |
+| :--- | :--- |
+| **Most severe class is best defended** | System Modification attacks have **7 overlapping gates**, making them the hardest to successfully execute. |
+| **Privacy invasions have strong defenses** | G8 (Outbound Controls) combined with G4 and G7 creates comprehensive exfiltration prevention. |
+| **Denial of Service is the weak spot** | As noted in the original assessment, perfect prevention of resource exhaustion is "difficult" — attackers can always try to consume more resources than you can limit. |
+| **Antagonism is the hardest to eliminate** | Preventing annoyance without breaking legitimate functionality is nearly impossible. Some level of "rm -rf /" jokes that fail safely may be acceptable. |
+| **G4 is the multi-class MVP** | File Write Restrictions appear in **3 out of 4 attack classes**, making it one of the most valuable single defenses. |
+
+---
+
+## 🎯 Prioritization by Attack Class
+
+| Priority | Attack Class | Rationale |
+| :---: | :--- | :--- |
+| **1** | **System Modification** | Highest severity, but also best defended — maintain strong gates |
+| **2** | **Invasion of Privacy** | High severity, excellent defenses available — implement G8 strictly |
+| **3** | **Denial of Service** | Moderate severity, weak defenses — accept residual risk |
+| **4** | **Antagonism** | Low severity, hard to prevent — focus on detection, not prevention |
+
+---
+
+This framework shows that **the most severe attacks are also the best defended**, while the most common annoyances are the hardest to prevent completely — a pragmatic trade-off in AI IDE security.
+
+
+
+
+
+
+
+## Architecture Diagram: Defense-in-Depth for AI IDEs
+
+```
+flowchart TB
+    subgraph Legend[Legend]
+        direction LR
+        L1[🛡️ Security Layer] --- L2[⚠️ Attack Class] --- L3[🔴 Vulnerability Pattern] --- L4[🚪 Security Gate]
+    end
+
+    subgraph External_World["🌐 Untrusted External World"]
+        direction TB
+        E1[📦 Malicious Repository<br/>GitHub/GitLab/NPM]
+        E2[👤 Attacker Server<br/>C2 & Exfiltration]
+        E3[🕸️ Malicious Website<br/>CORS Attacks]
+    end
+
+    subgraph Attack_Classes["⚠️ Attack Classes (Inspired by Java Security Model)"]
+        direction TB
+        
+        subgraph AC1[<b>System Modification</b><br/>Severity: 🔴🔴🔴 SEVERE]
+            direction TB
+            AC1_P1[1.1 MCP Poisoning]
+            AC1_P2[1.2 LSP Config]
+            AC1_P3[1.3 Tools Auto-Loading]
+            AC1_P4[1.4 Argument Injection]
+            AC1_P5[1.5 Hooks Definition]
+            AC1_P6[1.6 App-Specific Config]
+            AC1_P7[1.7 Race Condition]
+            AC1_P8[1.8 Filter Bypasses]
+            AC1_P9[1.9 Binary Planting]
+            AC1_P10[1.10 Safe Exec Abuse]
+            AC1_P11[1.11 Env Var Prefixing]
+            AC1_P12[1.12 IDE Settings Abuse]
+            AC1_P13[1.13 Local Network Services]
+            AC1_P14[2.3 PI → Config Mod]
+            AC1_P15[4.1 Persistent Backdoor]
+            AC1_P16[4.2 Two-Step Poisoning]
+            AC1_P17[4.3 Hidden Payload]
+        end
+        
+        subgraph AC2[<b>Invasion of Privacy</b><br/>Severity: 🟠🟠 MODERATE-SEVERE]
+            direction TB
+            AC2_P1[3.1 DNS/Ping Exfil]
+            AC2_P2[3.2 File Write Exfil]
+            AC2_P3[3.3 Silent Terminal Exfil]
+            AC2_P4[3.4 Rendered Content Exfil]
+            AC2_P5[3.5 Model Provider Redirect]
+            AC2_P6[3.6 Git Exfil]
+            AC2_P7[2.1 Adversarial Dirs]
+            AC2_P8[2.2 Prompt Templates]
+        end
+        
+        subgraph AC3[<b>Denial of Service</b><br/>Severity: 🟡 MODERATE]
+            direction TB
+            AC3_P1[Fork Bombs via 1.4]
+            AC3_P2[Crypto Miners via 1.3]
+            AC3_P3[Disk Fill via 1.8]
+            AC3_P4[API Exhaustion via 3.5]
+        end
+        
+        subgraph AC4[<b>Antagonism</b><br/>Severity: 🟢 LIGHT]
+            direction TB
+            AC4_P1[File Deletion via 2.1]
+            AC4_P2[UI Annoyances via 2.5]
+            AC4_P3[Theme Changes via 1.12]
+            AC4_P4[Sound via 1.8]
+        end
+    end
+
+    subgraph Defense_Layers["🛡️ Defense-in-Depth Layers (Mapped to Java Security Model)"]
+        direction TB
+        
+        subgraph L1_Pre_Execution["<b>L1: Pre-Execution Validation</b><br/>Gate: G7 - Input Sanitization"]
+            direction TB
+            L1_C1[🧹 Strip Invisible Unicode<br/>Remove zero-width chars]
+            L1_C2[📁 Sanitize Directory Names<br/>Block adversarial names]
+            L1_C3[🔍 Validate File Contents<br/>Scan for hidden instructions]
+            L1_C4[✓ Content Hash Verification<br/>Detect tampering]
+        end
+        
+        subgraph L2_Configuration_Gate["<b>L2: Configuration Approval Gate</b><br/>Gate: G1, G2, G3"]
+            direction TB
+            L2_C1[❓ Trust Dialog<br/>"Do you trust this workspace?"]
+            L2_C2[🔒 No Auto-Execution<br/>All configs require approval]
+            L2_C3[🔐 Content-Bound Trust<br/>Hash-based, not path-based]
+            L2_C4[🔄 Re-approval on Change<br/>git pull triggers new approval]
+        end
+        
+        subgraph L3_Execution_Sandbox["<b>L3: Execution Sandbox</b><br/>Gate: G4, G5, G6"]
+            direction TB
+            L3_C1[📦 Bubblewrap/gVisor<br/>System call interception]
+            L3_C2[🔧 Command Filtering<br/>Argument sanitization]
+            L3_C3[🚫 No Config Writes<br/>Agent can't modify own config]
+            L3_C4[💾 Read-Only Filesystem<br/>Workspace mounted ro by default]
+        end
+        
+        subgraph L4_Network_Isolation["<b>L4: Network Isolation</b><br/>Gate: G8, G9"]
+            direction TB
+            L4_C1[🚪 Network Gate<br/>iptables/pf filtering]
+            L4_C2[🔌 Local Service Auth<br/>Tokens for localhost endpoints]
+            L4_C3[🌐 DNS Filtering<br/>Block encoded exfiltration]
+            L4_C4[🖼️ Content Security<br/>No external images in preview]
+        end
+        
+        subgraph L5_Blast_Radius["<b>L5: Blast Radius Containment</b><br/>Gate: G3, G4, G6"]
+            direction TB
+            L5_C1[🧵 Git Worktree Fencing<br/>Immutable snapshots]
+            L5_C2[🗑️ Disposable Environments<br/>MicroVMs throw away after use]
+            L5_C3[🔐 No Persistence<br/>Global configs can't be modified]
+            L5_C4[📊 Audit Logging<br/>All actions recorded]
+        end
+    end
+
+    subgraph Security_Gates["🚪 Security Gates (G1-G9)"]
+        direction TB
+        G1[<b>G1 - Config Approval</b><br/>Blocks: 1.1,1.2,1.3,1.5,1.6,1.12,2.2,2.4,3.5]
+        G2[<b>G2 - Init Safety</b><br/>Blocks: 1.7]
+        G3[<b>G3 - Trust Integrity</b><br/>Blocks: 1.1(2-step),4.1,4.2,4.3]
+        G4[<b>G4 - File Write Restrict</b><br/>Blocks: 2.3,3.2]
+        G5[<b>G5 - Command Robustness</b><br/>Blocks: 1.4,1.8,1.10,1.11]
+        G6[<b>G6 - Binary Security</b><br/>Blocks: 1.9]
+        G7[<b>G7 - Input Sanitization</b><br/>Blocks: 2.1,2.5]
+        G8[<b>G8 - Outbound Controls</b><br/>Blocks: 3.1,3.2,3.3,3.4,3.5,3.6]
+        G9[<b>G9 - Network Security</b><br/>Blocks: 1.13]
+    end
+
+    subgraph Java_Style_Assessment["📊 Defense Strength Assessment (Java Security Model Style)"]
+        direction TB
+        JS1[<b>System Modification Defense: STRONG</b><br/>9 gates, 5 layers, multiple overlapping controls]
+        JS2[<b>Invasion of Privacy Defense: STRONG</b><br/>Comprehensive outbound filtering at all egress points]
+        JS3[<b>Denial of Service Defense: WEAK</b><br/>Resource limits help but perfect prevention difficult]
+        JS4[<b>Antagonism Defense: WEAK</b><br/>Annoyance is subjective, hard to block without breaking UX]
+    end
+
+    %% Attack Flow
+    E1 -->|Clone Repo| Attack_Classes
+    E2 -->|Command & Control| Attack_Classes
+    E3 -->|CORS Attack| Attack_Classes
+
+    %% Attack Classes trigger defenses
+    AC1 -->|Attempts System Modification| L1_Pre_Execution
+    AC2 -->|Attempts Data Exfiltration| L1_Pre_Execution
+    AC3 -->|Attempts DoS| L1_Pre_Execution
+    AC4 -->|Attempts Antagonism| L1_Pre_Execution
+
+    %% Defense Layer Flow
+    L1_Pre_Execution -->|Passed| L2_Configuration_Gate
+    L2_Configuration_Gate -->|Approved| L3_Execution_Sandbox
+    L3_Execution_Sandbox -->|Monitored| L4_Network_Isolation
+    L4_Network_Isolation -->|Contained| L5_Blast_Radius
+
+    %% Gates mapped to defenses
+    G7 --> L1_Pre_Execution
+    G1 & G2 & G3 --> L2_Configuration_Gate
+    G4 & G5 & G6 --> L3_Execution_Sandbox
+    G8 & G9 --> L4_Network_Isolation
+    G3 & G4 & G6 --> L5_Blast_Radius
+
+    %% Java-style assessment
+    L5_Blast_Radius --> JS1 & JS2
+    L3_Execution_Sandbox --> JS3 & JS4
+
+    %% Styling
+    classDef attack_system fill:#ff9999,stroke:#ff0000,stroke-width:3px
+    classDef attack_privacy fill:#ffb366,stroke:#ff6600,stroke-width:2px
+    classDef attack_dos fill:#ffff99,stroke:#cccc00,stroke-width:2px
+    classDef attack_antagonism fill:#ccff99,stroke:#339900,stroke-width:1px
+    classDef defense fill:#99ccff,stroke:#0066cc,stroke-width:2px
+    classDef gate fill:#90EE90,stroke:#006400,stroke-width:2px
+    classDef assessment fill:#f0f0f0,stroke:#333333,stroke-width:2px
+    
+    class AC1,AC1_P1,AC1_P2,AC1_P3,AC1_P4,AC1_P5,AC1_P6,AC1_P7,AC1_P8,AC1_P9,AC1_P10,AC1_P11,AC1_P12,AC1_P13,AC1_P14,AC1_P15,AC1_P16,AC1_P17 attack_system
+    class AC2,AC2_P1,AC2_P2,AC2_P3,AC2_P4,AC2_P5,AC2_P6,AC2_P7,AC2_P8 attack_privacy
+    class AC3,AC3_P1,AC3_P2,AC3_P3,AC3_P4 attack_dos
+    class AC4,AC4_P1,AC4_P2,AC4_P3,AC4_P4 attack_antagonism
+    class L1_Pre_Execution,L2_Configuration_Gate,L3_Execution_Sandbox,L4_Network_Isolation,L5_Blast_Radius defense
+    class G1,G2,G3,G4,G5,G6,G7,G8,G9 gate
+    class JS1,JS2,JS3,JS4 assessment
+```
+
+[!mermaid_20260312_2c9de6.svg](mermaid_20260312_2c9de6.svg)    
 
