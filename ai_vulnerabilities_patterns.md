@@ -82,6 +82,7 @@ flowchart TB
     subgraph Legend[Legend]
         direction LR
         L1[🟦 Component] --- L2[⚠️ Vulnerability] --- L3[➡️ Data Flow] --- L4[🔴 Attack Surface]
+        L5[🛡️ Security Gate G1-G9] --- L6[❌ Blocks Pattern]
     end
 
     subgraph External["🌐 External World"]
@@ -108,12 +109,24 @@ flowchart TB
         %% Vulnerabilities in Workspace
         W1 & W3 --- V_PI[⚠️ 2.x Prompt Injection]
         W2 & W4 & W5 & W6 & W7 & W8 & W11 --- V_CONFIG[⚠️ 1.x Configuration-Based<br/>Code Execution]
-        W9 --- V_DIR[⚠️ 2.1 Adversarial<br/>Directory Names]
-        W10 --- V_BIN[⚠️ 1.9 Binary Planting]
+        W9 --- V2_1[⚠️ 2.1 Adversarial<br/>Directory Names]
+        W10 --- V1_9[⚠️ 1.9 Binary Planting]
     end
 
     subgraph IDE["💻 AI IDE / Coding Assistant"]
         direction TB
+        
+        subgraph Security_Gates["🛡️ Security Gates (G1-G9)"]
+            G1[<b>G1 — Config Approval</b><br/>Nothing auto-executes without approval]
+            G2[<b>G2 — Initialization Safety</b><br/>No execution before trust dialog]
+            G3[<b>G3 — Trust Integrity</b><br/>Content hash binding, re-approval on change]
+            G4[<b>G4 — File Write Restrictions</b><br/>Agent can't modify own config]
+            G5[<b>G5 — Command Robustness</b><br/>Parsing handles shell tricks]
+            G6[<b>G6 — Binary Security</b><br/>Workspace not in search path]
+            G7[<b>G7 — Input Sanitization</b><br/>Strip invisible Unicode]
+            G8[<b>G8 — Outbound Controls</b><br/>Block/gate all external requests]
+            G9[<b>G9 — Network Security</b><br/>Auth required for local services]
+        end
         
         subgraph Trust_Boundary[🔒 Trust Boundary]
             TB1[🤖 AI Model/Agent<br/>with Prompt Context]
@@ -122,18 +135,19 @@ flowchart TB
         end
         
         subgraph Configuration["⚙️ Configuration System"]
-            C1[📋 Workspace Config Loader<br/>- Auto-executes on load]
-            C2[🛠️ Tool/Skill Manager<br/>- Auto-loads tools]
-            C3[🔌 MCP Server Manager<br/>- Spawns processes]
-            C4[📏 LSP Manager<br/>- Launches language servers]
-            C5[🎣 Hook Manager<br/>- Executes on events]
+            direction TB
+            C1[📋 Workspace Config Loader]
+            C2[🛠️ Tool/Skill Manager]
+            C3[🔌 MCP Server Manager]
+            C4[📏 LSP Manager]
+            C5[🎣 Hook Manager]
             
-            %% Vulnerabilities in Config
-            C1 --- V1_6[⚠️ 1.6 App-Specific Config]
-            C2 --- V1_3[⚠️ 1.3 Tools Auto-Loading]
-            C3 --- V1_1[⚠️ 1.1 MCP Poisoning]
-            C4 --- V1_2[⚠️ 1.2 LSP Config]
-            C5 --- V1_5[⚠️ 1.5 Hooks Definition]
+            %% Vulnerabilities with Gate Mapping
+            C1 --- V1_6[⚠️ 1.6 App-Specific Config<br/><b>❌ Blocked by: G1</b>]
+            C2 --- V1_3[⚠️ 1.3 Tools Auto-Loading<br/><b>❌ Blocked by: G1</b>]
+            C3 --- V1_1[⚠️ 1.1 MCP Poisoning<br/><b>❌ Blocked by: G1, G3</b>]
+            C4 --- V1_2[⚠️ 1.2 LSP Config<br/><b>❌ Blocked by: G1</b>]
+            C5 --- V1_5[⚠️ 1.5 Hooks Definition<br/><b>❌ Blocked by: G1</b>]
         end
         
         subgraph Execution["⚡ Execution Engine"]
@@ -141,20 +155,20 @@ flowchart TB
             E2[🔧 Safe Command Allowlist<br/>git diff, status, etc]
             E3[📂 File System Operations<br/>Read/Write]
             
-            %% Vulnerabilities in Execution
-            E1 --- V1_4[⚠️ 1.4 Argument Injection]
-            E1 --- V1_8[⚠️ 1.8 Filtering Bypasses]
-            E1 --- V1_11[⚠️ 1.11 Env Var Prefixing]
-            E2 --- V1_10[⚠️ 1.10 Safe Executables Abuse]
+            %% Vulnerabilities with Gate Mapping
+            E1 --- V1_4[⚠️ 1.4 Argument Injection<br/><b>❌ Blocked by: G5</b>]
+            E1 --- V1_8[⚠️ 1.8 Filtering Bypasses<br/><b>❌ Blocked by: G5</b>]
+            E1 --- V1_11[⚠️ 1.11 Env Var Prefixing<br/><b>❌ Blocked by: G5</b>]
+            E2 --- V1_10[⚠️ 1.10 Safe Executables Abuse<br/><b>❌ Blocked by: G5</b>]
         end
         
         subgraph Network["🌐 Local Network Services"]
-            N1[🔌 Local HTTP Server<br/>Port dynamic]
+            N1[🔌 Local HTTP Server]
             N2[🌍 Webview/Browser Preview]
             N3[📡 Model API Client]
             
-            %% Vulnerability in Network Services
-            N1 --- V1_13[⚠️ 1.13 Unauthenticated<br/>Local Network Services]
+            %% Vulnerabilities with Gate Mapping
+            N1 --- V1_13[⚠️ 1.13 Unauthenticated Local Services<br/><b>❌ Blocked by: G9</b>]
         end
         
         subgraph Persistence["💾 Persistence Layer"]
@@ -162,74 +176,82 @@ flowchart TB
             P2[📁 Workspace Cache]
             P3[🔐 Trust Database<br/>Approved Workspaces]
             
-            %% Vulnerabilities in Persistence
-            P1 --- V4_1[⚠️ 4.1 Persistent Backdoor]
-            P2 & P3 --- V4_2[⚠️ 4.2 Two-Step Poisoning]
+            %% Vulnerabilities with Gate Mapping
+            P1 --- V4_1[⚠️ 4.1 Persistent Backdoor<br/><b>❌ Blocked by: G3</b>]
+            P2 & P3 --- V4_2[⚠️ 4.2 Two-Step Poisoning<br/><b>❌ Blocked by: G3</b>]
         end
         
-        subgraph DataFlow["🔄 Data Flow Paths"]
-            D1[📤 Exfiltration Channels]
-            D2[📥 Injection Vectors]
-        end
-        
-        %% Trust dialog
+        %% Trust dialog with gate mapping
         TD[❓ Trust Dialog<br/>"Do you trust this workspace?"]
-        
-        %% Race condition
-        V1_7[⚠️ 1.7 Initialization Race<br/>Executes BEFORE trust dialog] --> TD
+        V1_7[⚠️ 1.7 Initialization Race<br/><b>❌ Blocked by: G2</b>] --> TD
     end
 
-    subgraph Attack_Surfaces["🔴 Attack Surfaces"]
-        A1[📥 Ingress - Project Import<br/>- Clone repo<br/>- Open folder]
-        A2[📤 Egress - Network Exfiltration<br/>- DNS queries<br/>- HTTP requests<br/>- Ping traffic]
-        A3[🔄 Lateral Movement<br/>- Config file writes<br/>- Global settings]
+    subgraph Data_Exfiltration["📤 Data Exfiltration Channels"]
+        D1[DNS Queries<br/>ping/nslookup/dig]
+        D2[HTTP Requests<br/>curl/wget/fetch]
+        D3[Markdown Images<br/>![]()]
+        D4[Mermaid Diagrams<br/>external image refs]
+        D5[Model API Calls<br/>to attacker server]
+        D6[Git Operations<br/>remote URLs]
+        
+        %% Exfiltration vulnerabilities with gate mapping
+        D1 --- V3_1[⚠️ 3.1 Exfil via DNS/Ping<br/><b>❌ Blocked by: G8</b>]
+        D2 --- V3_3[⚠️ 3.3 Exfil via Silent Terminal<br/><b>❌ Blocked by: G8</b>]
+        D3 & D4 --- V3_4[⚠️ 3.4 Exfil via Rendered Content<br/><b>❌ Blocked by: G8</b>]
+        D5 --- V3_5[⚠️ 3.5 Model Provider Redirect<br/><b>❌ Blocked by: G1, G8</b>]
+        D6 --- V3_6[⚠️ 3.6 Exfil via Git<br/><b>❌ Blocked by: G8</b>]
+    end
+
+    subgraph Attack_Surfaces["🔴 Attack Surfaces with Gates"]
+        A1[📥 Ingress - Project Import<br/>- Clone repo<br/>- Open folder<br/><b>🛡️ Gates: G1, G2, G6, G7</b>]
+        A2[📤 Egress - Network Exfiltration<br/>- DNS/HTTP/Ping<br/><b>🛡️ Gates: G8, G9</b>]
+        A3[🔄 Lateral Movement<br/>- Config writes<br/>- Global settings<br/><b>🛡️ Gates: G3, G4</b>]
     end
 
     %% Connections from External to Workspace
     E1 -->|Clone/Download| A1
     A1 --> W1 & W2 & W3 & W4 & W5 & W6 & W7 & W8 & W9 & W10 & W11
 
-    %% Workspace to IDE flows
-    Workspace -->|Load on open| Configuration
-    Workspace -->|Index for context| Trust_Boundary
+    %% Workspace to IDE flows with gates
+    Workspace -->|Load on open| G1
+    G1 --> Configuration
+    
+    Workspace -->|Index for context| G7
+    G7 --> Trust_Boundary
+    
+    Workspace -->|Binary search| G6
+    G6 --> Execution
     
     %% Trust Boundary flows
     Trust_Boundary -->|Uses| Execution
-    Trust_Boundary -->|May modify| Configuration
+    Trust_Boundary -->|May modify| G4
+    G4 --> Configuration
     
     %% Configuration to Execution
-    Configuration -->|Triggers| Execution
+    Configuration -->|Triggers| G5
+    G5 --> Execution
     
-    %% Execution to DataFlow
-    Execution -->|Read/Write| E3
+    %% Execution to DataFlow with gates
+    Execution -->|Initiates outbound| G8
+    G8 --> Data_Exfiltration
     
-    %% Execution to Network
-    Execution -->|Can initiate| Network
+    %% Execution to Persistence with gates
+    Execution -->|Writes to| G3
+    G3 --> Persistence
     
-    %% Execution to Persistence
-    Execution -->|Can write| Persistence
+    %% Network security gate
+    Network -->|Local access| G9
+    G9 --> Execution
     
-    %% DataFlow connections
-    TB1 -->|Context includes| Workspace
-    
-    %% Exfiltration paths
-    Execution -->|DNS Queries| E2
-    Execution -->|HTTP Requests| E2
-    Execution -->|Ping Commands| E2
-    
-    Network -->|Ingress from malicious sites| E3
-    Network -->|Egress data| E2
-    
-    Persistence -->|Persistence across sessions| P1
-    
-    %% Data Exfiltration vulnerabilities
-    D1 --- V3_1[⚠️ 3.1 Exfil via DNS/Ping]
-    D1 --- V3_2[⚠️ 3.2 Exfil via File Write]
-    D1 --- V3_3[⚠️ 3.3 Exfil via Silent Terminal]
-    
-    %% Add remaining vulnerability numbers for completeness
-    V2_3[⚠️ 2.3 PI → Config Modification] --- Configuration
-    
+    %% Add remaining vulnerability patterns with gate mapping
+    V2_2[⚠️ 2.2 Prompt Template Auto-Loading<br/><b>❌ Blocked by: G1</b>] --- G1
+    V2_3[⚠️ 2.3 PI → Config Modification<br/><b>❌ Blocked by: G4</b>] --- G4
+    V2_4[⚠️ 2.4 Rules Override<br/><b>❌ Blocked by: G1</b>] --- G1
+    V2_5[⚠️ 2.5 Hidden Instructions (invisible chars)<br/><b>❌ Blocked by: G7</b>] --- G7
+    V3_2[⚠️ 3.2 Exfil via File Write<br/><b>❌ Blocked by: G4, G8</b>] --- G4
+    V4_3[⚠️ 4.3 Hidden Payload in Approved Commands<br/><b>❌ Blocked by: G3</b>] --- G3
+    V1_12[⚠️ 1.12 IDE Settings Abuse<br/><b>❌ Blocked by: G1</b>] --- G1
+
     %% Styling
     classDef vuln fill:#ff9999,stroke:#ff0000,stroke-width:2px
     classDef component fill:#e1f5fe,stroke:#01579b
@@ -237,13 +259,17 @@ flowchart TB
     classDef workspace fill:#f3e5f5,stroke:#4a148c
     classDef trust fill:#c8e6c9,stroke:#1b5e20
     classDef attack fill:#ffeb3b,stroke:#f57f17
+    classDef gate fill:#90EE90,stroke:#006400,stroke-width:2px
+    classDef exfil fill:#FFB6C1,stroke:#8B0000
     
-    class V1_1,V1_2,V1_3,V1_4,V1_5,V1_6,V1_7,V1_8,V1_9,V1_10,V1_11,V1_12,V1_13,V2_1,V2_2,V2_3,V3_1,V3_2,V3_3,V4_1,V4_2,V4_3 vuln
+    class V1_1,V1_2,V1_3,V1_4,V1_5,V1_6,V1_7,V1_8,V1_9,V1_10,V1_11,V1_12,V1_13,V2_1,V2_2,V2_3,V2_4,V2_5,V3_1,V3_2,V3_3,V3_4,V3_5,V3_6,V4_1,V4_2,V4_3 vuln
     class E1,E2,E3 external
     class W1,W2,W3,W4,W5,W6,W7,W8,W9,W10,W11 workspace
     class TB1,TB2,TB3 trust
     class C1,C2,C3,C4,C5,E1,E2,E3,N1,N2,N3,P1,P2,P3 component
     class A1,A2,A3 attack
+    class G1,G2,G3,G4,G5,G6,G7,G8,G9 gate
+    class D1,D2,D3,D4,D5,D6 exfil
 ```
 
 [!mermaid_20260312_7fcfcb.svg](mermaid_20260312_7fcfcb.svg)    
@@ -378,6 +404,197 @@ The main user-facing security control is the **Trust Dialog** ("Do you trust the
 3.  **Global Persistence (4.1):** Attacks that escape the local workspace and write to global configuration directories survive outside the workspace trust model entirely, affecting all future sessions.
 
 This reveals that AI IDEs have multiple concentric trust zones. Vulnerabilities exist at every layer where untrusted workspace data interacts with trusted IDE functionality.
+
+
+# Critical Security Gates Coverage Summary
+
+Based on the checklist's mapping, this document shows how 9 key security gates block the 25 vulnerability patterns in AI IDEs.
+
+---
+
+## 🚪 Gate Coverage Matrix
+
+| Gate | What It Blocks | Priority |
+| :--- | :--- | :--- |
+| **G1 — Config Approval** | **9 patterns**: 1.1 (MCP), 1.2 (LSP), 1.3 (Tools), 1.5 (Hooks), 1.6 (App Config), 1.12 (IDE Settings), 2.2 (Prompt Templates), 2.4 (Rules Override), 3.5 (Model Redirect) | **Highest** — stops most zero-click config attacks |
+| **G8 — Outbound Controls** | **6 patterns**: 3.1 (DNS), 3.2 (File Write), 3.3 (Silent Terminal), 3.4 (Rendered Content), 3.5 (Model Redirect), 3.6 (Git) | **High** — blocks all exfiltration channels |
+| **G5 — Command Robustness** | **4 patterns**: 1.4 (Arg Injection), 1.8 (Filter Bypass), 1.10 (Safe Exec Abuse), 1.11 (Env Var Prefix) | **High** — prevents terminal-based attacks |
+| **G7 — Input Sanitization** | **2 patterns**: 2.1 (Adversarial Dirs), 2.5 (Hidden Instructions) — *but amplifies all prompt injection defenses* | **High** — reduces all prompt injection chains |
+| **G4 — File Write Restrictions** | **2 patterns**: 2.3 (PI → Config Mod), 3.2 (Exfil via File) — *breaks the classic PI → code exec chain* | **High** — stops most common escalation path |
+| **G3 — Trust Integrity** | **4 patterns**: 1.1 (two-step variant), 4.1 (Persistent), 4.2 (Two-Step), 4.3 (Hidden Payload) | **Medium** — prevents post-approval attacks |
+| **G2 — Initialization Safety** | **1 pattern**: 1.7 (Race Condition) — *upgrades all config attacks to zero-click if missing* | **Medium** — prevents startup execution |
+| **G6 — Binary Security** | **1 pattern**: 1.9 (Binary Planting) | **Medium** — stops planted executables |
+| **G9 — Network Security** | **1 pattern**: 1.13 (Local Network Services) | **Medium** — secures local endpoints |
+
+---
+
+## 🎯 Priority Summary
+
+| Priority Level | Gates | Patterns Blocked |
+| :--- | :--- | :--- |
+| **Highest** | G1 | 9 patterns |
+| **High** | G8, G5, G7, G4 | 14 patterns (some overlap) |
+| **Medium** | G3, G2, G6, G9 | 6 patterns |
+
+---
+
+## ✅ If You Can Only Do Five Things
+
+*From the Checklist's top recommendations:*
+
+| Priority | Gate | Why It Matters |
+| :---: | :--- | :--- |
+| **1** | **G1 — Config Approval** | Nothing auto-executes from workspace without approval. **Blocks 9 patterns** including all config-based code execution. |
+| **2** | **G8 — Outbound Controls** | Block all outbound requests from rendering and tool features. **Blocks all 6 exfiltration patterns.** |
+| **3** | **G5 — Command Robustness** | Harden command parsing against injection and bypasses. **Blocks 4 terminal-based attack patterns.** |
+| **4** | **G4 — File Write Restrictions** | Agent cannot write to its own config files. **Breaks the classic PI → code execution chain.** |
+| **5** | **G7 — Input Sanitization** | Strip invisible Unicode from LLM input. **Defeats covert prompt injection delivery across all chains.** |
+
+---
+
+## 🔗 Attack Chains Broken by These Gates
+
+| Attack Chain | Critical Gates That Break It |
+| :--- | :--- |
+| **Chain 1 — "The Classic"** (Repo → PI → File Write → Config Mod → Code Exec) | **G4** (File Write Restrictions) breaks the chain at the critical "File Write" step. **G1** (Config Approval) blocks the final "Config Mod" from executing. |
+| **Chain 3 — "The Exfil Express"** (Repo → PI in README → Terminal → DNS → Attacker) | **G8** (Outbound Controls) blocks the DNS/HTTP egress. **G5** (Command Robustness) can block the terminal command itself. |
+| **Chain 5 — "The Long Con"** (Benign config approved → malicious git pull → loads without re-approval) | **G3** (Trust Integrity) prevents configs from loading without re-approval after a change. **G1** (Config Approval) ensures all configs, even updated ones, require approval. |
+
+---
+
+## 📊 Coverage Visualization
+
+```
+G1 ────────────────── Blocks 9 config-based patterns
+╲
+╲
+G4 ───╲───────────── Breaks the PI → Code Exec chain
+╲
+G5 ─────╲─────────── Blocks 4 terminal attack patterns
+╲
+G7 ───────╲───────── Sanitizes input, amplifies all PI defenses
+╲
+G8 ──────────────── Blocks all 6 exfiltration channels
+```
+
+
+**Results in defense-in-depth across:**
+- 📥 **Ingress** (G7, G1)
+- ⚙️ **Execution** (G5, G4)
+- 📤 **Egress** (G8)
+- 🔁 **Persistence** (G3)
+- 🚀 **Initialization** (G2)
+
+---
+
+This gate-based approach shows that a relatively small number of well-placed security controls can block the vast majority of attack patterns, with **just five gates covering 80%+ of the vulnerability surface**.
+
+# Mapping Each Sandbox Layer to the 9 Security Gates
+
+This document shows how different sandboxing technologies enforce specific security gates, creating a defense-in-depth strategy against the 25 vulnerability patterns.
+
+---
+
+## 🏗️ Sandbox Layer Matrix
+
+| Layer | Technology | Gates Enforced | Attack Patterns Blocked |
+| :--- | :--- | :--- | :--- |
+| **L1: Git Worktree Fencing** | Content-addressed worktrees, read-only mounts | **G3** (Trust Integrity) | **1.1 (two-step), 4.2, 4.3** — prevents tampering after approval |
+| **L2: Bubblewrap** | Linux namespaces, seccomp-bpf | **G1, G2, G6** | **1.1–1.12** (all config-based code exec), **1.9** (binary planting) |
+| **L3: gVisor** | Userspace kernel, system call interception | **G5, G8** | **1.4, 1.8, 1.11** — blocks argument injection and filter bypasses |
+| **L4: Extism WASM** | Capability-based permissions, manifest validation | **G1, G4, G5** | **2.3, 3.2** — prevents config modification and file exfiltration |
+| **L5: Seatbelt** | macOS sandbox profiles | **G1, G2, G6** | Same as Bubblewrap but for macOS |
+| **L6: Network Gates** | iptables/nftables/pf, DNS filtering | **G8** | **3.1, 3.3, 3.4, 3.5, 3.6** — blocks all exfiltration channels |
+| **L7: MicroVM** | Firecracker, complete isolation | **ALL GATES** | **Everything** — ultimate blast radius containment |
+
+---
+
+## 🛡️ Defense-in-Depth Strategy
+
+The key insight is **layered, overlapping controls**. No single layer is perfect, but together they create multiple hurdles for an attacker.
+
+### How Layers Catch What Others Miss
+
+| If an attacker bypasses... | ...this layer catches it |
+| :--- | :--- |
+| **G1** (Config Approval) by exploiting a race condition | **G2** (Initialization Safety) prevents startup execution |
+| **G2** through social engineering | **G3** (Trust Integrity) detects tampering after approval |
+| **G1–G3** by modifying configs via prompt injection | **G4** (File Write Restrictions) blocks writes to config directories |
+| **G1–G4** and tries terminal commands | **G5** (Command Robustness) blocks injection and bypasses |
+| **G1–G5** by planting binaries | **G6** (Binary Security) prevents execution of planted executables |
+| **G1–G6** by hiding instructions | **G7** (Input Sanitization) strips invisible Unicode and adversarial content |
+| **G1–G7** and tries to steal data | **G8** (Outbound Controls) blocks DNS, HTTP, and all exfiltration channels |
+| **G1–G8** by attacking local services | **G9** (Network Security) requires authentication for local endpoints |
+| **All of the above** | **L7: MicroVM** contains the blast radius to a disposable environment |
+
+---
+
+## 🔄 Visualizing the Layered Defense
+
+```
+ATTACK SURFACE
+│
+▼
+┌─────────────────────────────────────┐
+│ L1: Git Worktree Fencing (G3) │ ◄── Prevents post-approval tampering
+│ └───────────────────────────────── │
+│ L2: Bubblewrap / L5: Seatbelt │ ◄── Blocks config execution & binary planting
+│ └──────────────────────────────── │
+│ L3: gVisor (G5, G8) │ ◄── Stops command injection & filter bypass
+│ └─────────────────────────────── │
+│ L4: Extism WASM (G1, G4, G5) │ ◄── Prevents config writes & file exfil
+│ └────────────────────────────── │
+│ L6: Network Gates (G8) │ ◄── Blocks all data egress channels
+│ └───────────────────────────── │
+│ L7: MicroVM (ALL GATES) │ ◄── Ultimate containment
+└─────────────────────────────────────┘
+│
+▼
+BLAST RADIUS CONTAINED
+```
+
+
+---
+
+## 📊 Complete Gate-to-Layer Mapping
+
+| Gate | Primary Enforcers | Backup Enforcers |
+| :--- | :--- | :--- |
+| **G1 — Config Approval** | L2 (Bubblewrap), L4 (WASM), L5 (Seatbelt) | L7 (MicroVM) |
+| **G2 — Initialization Safety** | L2, L5 | L7 |
+| **G3 — Trust Integrity** | L1 (Git Worktree) | L7 |
+| **G4 — File Write Restrictions** | L4 (WASM) | L7 |
+| **G5 — Command Robustness** | L3 (gVisor), L4 (WASM) | L7 |
+| **G6 — Binary Security** | L2, L5 | L7 |
+| **G7 — Input Sanitization** | *Application Layer* | L7 |
+| **G8 — Outbound Controls** | L3 (gVisor), L6 (Network Gates) | L7 |
+| **G9 — Network Security** | L6 | L7 |
+
+---
+
+## 🎯 Why This Works
+
+This layered approach solves the fundamental problem of AI agent security: **decoupling the agent from the developer's filesystem**.
+
+| Challenge | Solution |
+| :--- | :--- |
+| Agents need to read code | Read-only mounts (L1) with content-addressed storage |
+| Agents need to run tools | Sandboxed execution with seccomp (L2, L5) |
+| Agents need network access | gVisor interception + network filters (L3, L6) |
+| Agents need to write files | Capability-based WASM permissions (L4) |
+| Agents might get compromised | MicroVM containment (L7) — throw away the environment |
+
+---
+
+## 🔑 The Key Insight
+
+> **When an attack succeeds (and some will), the blast radius is contained to an environment you can throw away.**
+
+This is the answer: decouple the agent from the developer's filesystem through multiple layers of sandboxing, each mapped to specific attack patterns and security gates. No single layer is perfect, but together they create a defense where:
+- Each layer covers the gaps of the layers above
+- Attackers must bypass multiple independent technologies
+- The most sensitive assets (global configs, SSH keys, production code) are never exposed to the agent environment
+
 
 
 
