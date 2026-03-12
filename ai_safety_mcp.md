@@ -2,6 +2,265 @@
 
 This design framework addresses the critical security and safety challenges in AI/ML systems, particularly focusing on the paradigm shift from unstructured CLI-based interactions to structured, controlled interfaces. The framework encompasses architectural patterns, implementation guidelines, and operational procedures to ensure robust, secure, and reliable AI systems.
 
+
+---
+
+# Access Constraint Framework for AI/ML Systems
+
+## Universal Access Control Matrix
+
+| Resource Type | Access Scope | Allowed Operations | Constraint Conditions | Validation Method |
+|--------------|--------------|-------------------|----------------------|-------------------|
+| **File System** | `/project/data/` | Read, Write | File size < 10MB, no symlinks | Path canonicalization |
+| **File System** | `/project/configs/` | Read Only | .json, .yaml, .toml only | Extension whitelist |
+| **File System** | `/project/temp/` | Create, Read, Delete | Auto-delete after 24h | Temp file tracking |
+| **File System** | `/system/` | **DENIED** | N/A | Path blocklist |
+| **File System** | `/models/` | Read Only | Version >= 1.0, checksum verified | Model registry validation |
+| **File System** | `/logs/` | Read Only | Last 7 days only, no auth logs | Date filtering |
+
+---
+
+## CRUDE Operation Controls
+
+### Create Operations
+
+| Resource | Allowed Locations | Constraints | Authorization Required |
+|----------|------------------|-------------|----------------------|
+| Files | `/project/uploads/` | Max 5MB, extensions: .txt,.csv,.json | User context validation |
+| Files | `/project/temp/` | Auto-cleanup, max age 24h | Session token |
+| Directories | `/project/workspace/` | Max depth 3, name regex: `^[a-z0-9_]+$` | Project ownership check |
+| Database Records | `user_data` table only | No auto-increment override | Row-level security |
+| Database Records | `audit_log` table only | Append-only, no updates | System account only |
+| API Endpoints | `/api/v1/*` | Rate limit: 100/hour | API key validation |
+| API Endpoints | `/api/v2/*` | Rate limit: 10/hour, OAuth2 required | JWT validation |
+| Sessions | New session | Max 1 concurrent session per user | MFA for sensitive roles |
+| Models | `/models/staging/` | Max size 2GB, format .h5,.pt,.onnx | Security scan required |
+
+### Read Operations
+
+| Resource | Accessible Paths | Filters | Data Masking |
+|----------|-----------------|---------|--------------|
+| Files | `/public/*` | No filtering | None (public data) |
+| Files | `/project/*` | Exclude `.env`, `.key`, `.pem` | Redact secrets (***) |
+| Files | `/config/*` | Only non-sensitive configs | Remove passwords, tokens |
+| Databases | Read-only replicas | WHERE user_id = context.user_id | PII anonymization |
+| Databases | Analytics DB | Aggregated data only, no raw rows | Differential privacy |
+| APIs | `GET /api/v1/public/*` | Response size < 1MB | Cache public responses |
+| APIs | `GET /api/v1/private/*` | Response size < 100KB | Remove sensitive fields |
+| Logs | `/logs/application/` | Last 7 days only | No authentication data |
+| Logs | `/logs/performance/` | Last 30 days, aggregated | No user identifiers |
+| Models | `/models/deployed/` | Version >= 1.0.0 | Weight encryption at rest |
+| Models | `/models/experimental/` | Requires special permission | No production access |
+
+### Update Operations
+
+| Resource | Writable Locations | Conditions | Audit Level |
+|----------|-------------------|------------|-------------|
+| Files | `/project/data/` | Checkout required, version tracked | HIGH |
+| Files | `/project/configs/user/` | JSON schema validation | MEDIUM |
+| Files | `/project/configs/system/` | **DENIED** | CRITICAL |
+| Database | User-owned records only | Optimistic locking, version check | HIGH |
+| Database | System tables | **DENIED** | CRITICAL |
+| State | Session context only | No cross-session writes | MEDIUM |
+| State | Redis cache | TTL < 5 minutes, no persistence | LOW |
+| Models | Model weights | **DENIED** (read-only) | CRITICAL |
+| User Profiles | Own profile only | Field-level validation | MEDIUM |
+
+### Delete Operations
+
+| Resource | Deletion Scope | Safety Controls | Approval Required |
+|----------|---------------|-----------------|-------------------|
+| Files | `/project/temp/*` | 30-day soft delete, then purge | Auto-cleanup |
+| Files | `/project/data/*` | Backup first, confirmation prompt | Multi-user approval |
+| Files | `/project/archived/*` | 90-day retention, legal hold check | Data steward |
+| Database | User-owned records | Soft delete (is_active=false) | Audit trail |
+| Database | Audit logs | **DENIED** (immutable) | Legal compliance |
+| Sessions | Own session only | Re-authentication required | Immediate log |
+| Sessions | Other user sessions | **DENIED** | CRITICAL |
+| Models | `/models/archived/` | 1 year retention, backup verified | Model governance board |
+| API Keys | User-owned keys | 24-hour cool-down period | User confirmation |
+
+### Execute Operations
+
+| Resource | Execution Scope | Permitted Commands | Resource Limits |
+|----------|----------------|-------------------|-----------------|
+| Scripts | `/project/scripts/approved/` | Python, bash (sandboxed) | CPU: 0.1 core, Mem: 256MB |
+| Scripts | `/project/scripts/restricted/` | Review required, signed containers | CPU: 0.5 core, Mem: 1GB |
+| Queries | Read-only database | SELECT only, no JOINs on sensitive tables | Timeout: 5s, rows: 1000 |
+| Queries | Analytics database | Aggregation queries only | Timeout: 30s, complexity score |
+| Models | Inference only | No training, no weight export | Batch size ≤ 32, rate: 100/min |
+| Models | Fine-tuning | **DENIED** (separate system) | N/A |
+| APIs | `POST /api/execute/` | Idempotency keys required | Concurrent: 5, timeout: 10s |
+| APIs | `POST /api/batch/` | Max 100 items, async processing | Queue depth: 1000 |
+| Shell | Sandbox container | Predefined commands only | Network: none, filesystem: tmpfs |
+
+---
+
+## Server Access Constraints
+
+| Server Type | Allowed IPs | Ports | Protocols | Access Schedule | Authentication |
+|------------|-------------|-------|-----------|-----------------|----------------|
+| **Development** | 10.0.0.0/8, 192.168.1.0/24 | 22, 80, 443, 3000-3010 | SSH, HTTP/S | 24/7 | SSH keys + 2FA |
+| **Staging** | 10.1.0.0/16, VPN pool | 443 only | HTTPS | Business hours (8am-8pm) | OAuth2 + IP allowlist |
+| **Production** | 10.2.0.0/16, bastion hosts | 443 only | HTTPS | With change ticket + 2FA | Certificate + MFA |
+| **Database** | 10.0.0.0/8, app servers only | 5432, 3306 | PostgreSQL, MySQL | Application context only | Mutual TLS |
+| **Cache** | 10.0.0.0/8, app servers only | 6379 | Redis | Application context only | Password + network policy |
+| **Model Serving** | 10.3.0.0/16 | 8501-8510 | gRPC, HTTP | 24/7, rate limited | API keys + JWT |
+| **Message Queue** | 10.4.0.0/16 | 5672, 15672 | AMQP, HTTPS | Production only | Service accounts |
+| **Monitoring** | 10.5.0.0/16, observability team | 9090, 3000 | HTTP/S | Read-only access | LDAP + RBAC |
+| **Backup** | 10.6.0.0/16, backup servers | 873 | Rsync | Scheduled windows | SSH keys + encryption |
+
+---
+
+## Page/Access Control
+
+| Page/Route | Allowed Roles | Device Constraints | Session Requirement | Rate Limit |
+|-----------|---------------|-------------------|---------------------|------------|
+| `/dashboard` | user, admin, viewer | Any | Active session | 100/hour |
+| `/admin/*` | admin only | Corporate IP only | 2FA + fresh login | 20/hour |
+| `/api/docs` | anonymous, user | Any | None | 1000/hour |
+| `/models/playground` | user, researcher | Modern browser | Active session + GPU quota | 50/day |
+| `/settings/profile` | authenticated user | Any | Session < 24h old | 30/hour |
+| `/settings/security` | authenticated user | Same device | Re-authenticate | 5/hour |
+| `/admin/users` | admin, security | VPN required | 2FA + hardware token | 10/hour |
+| `/admin/logs` | auditor, admin | Bastion host | MFA + ticket reference | 5/hour |
+| `/debug/*` | developer only | Dev environment | **Disabled in production** | N/A |
+| `/metrics` | monitoring system | Internal network | Client certificate | 60/minute |
+
+---
+
+## Model Access Constraints
+
+| Model Type | Access Level | Inference Limits | Export Control | Versioning |
+|-----------|-------------|------------------|----------------|------------|
+| **Public Models** | Anyone | 1000 inferences/day | ONNX format only | Latest stable |
+| **Internal Models** | Employees | 10,000 inferences/day | No export, API only | Version pinned |
+| **Customer Models** | Specific tenants | Based on subscription | Encrypted export | Tenant-isolated |
+| **Research Models** | Research team | Unlimited in sandbox | Full export with approval | All versions |
+| **Sensitive Models** | Security team | 100 inferences/day | **NO EXPORT** | Immutable |
+
+### Model Access Conditions
+
+| Condition Type | Rule | Enforcement |
+|---------------|------|-------------|
+| Input Validation | Input shape matches training | Automatic schema check |
+| Output Filtering | No PII in responses | Post-processing scanner |
+| Temperature Limit | ≤ 1.0 for production | API parameter clamp |
+| Token Limit | ≤ 2048 for free tier | Request truncation |
+| Cost Control | $0.01/inference budget | Billing quota |
+| Geographic | EU data stays in EU | Region routing |
+| Compliance | No medical/legal advice | Content filter |
+
+---
+
+## Port Access Constraints
+
+| Port Range | Protocol | Allowed Services | Network Zone | Monitoring |
+|-----------|----------|-----------------|--------------|------------|
+| 22 | SSH | Bastion hosts only | Management | Session recording |
+| 80 | HTTP | Redirect to 443 | DMZ | Disabled in prod |
+| 443 | HTTPS | Web apps, APIs | Public/DMZ | WAF + DDoS protection |
+| 3000-3100 | HTTP | Dev servers | Internal only | Basic logging |
+| 5000-5100 | HTTP | Model serving | App tier | Model monitoring |
+| 5432 | PostgreSQL | Database servers | Data tier | Query logging |
+| 6379 | Redis | Cache servers | Data tier | Memory monitoring |
+| 8080 | HTTP | Admin interfaces | Management | Audit logging |
+| 9090 | HTTP | Prometheus | Monitoring | Metrics collection |
+| 27017 | MongoDB | Database servers | Data tier | Slow query logging |
+
+---
+
+## Conditional Access Rules
+
+| Rule ID | Condition | Grant Access To | Deny Access To | Timeout |
+|---------|-----------|-----------------|----------------|---------|
+| R001 | Business hours (9am-5pm local) | All standard resources | Experimental features | None |
+| R002 | Outside business hours | Emergency access only | Non-critical resources | 2 hours |
+| R003 | High confidence score (>0.95) | Full model access | N/A | Session duration |
+| R004 | Low confidence score (<0.6) | Basic only | Advanced features | 5 minutes |
+| R005 | New device/login | Read-only mode | Write operations | 24 hours |
+| R006 | Suspicious IP | **BLOCKED** | Everything | Review required |
+| R007 | Concurrent sessions > 3 | Read-only | Write operations | Immediate |
+| R008 | API key from new location | Require email confirmation | Sensitive endpoints | Until confirmed |
+| R009 | Unusual data volume | Rate limit reduced 90% | Batch operations | 1 hour |
+
+---
+
+## Quota Management
+
+| Resource | Free Tier | Pro Tier | Enterprise | Enforcement |
+|----------|-----------|----------|------------|-------------|
+| File Storage | 100MB | 10GB | 100GB | Soft quota, then block |
+| Model Inferences | 1000/day | 10000/day | 100000/day | Hard throttle |
+| Concurrent Jobs | 1 | 5 | 20 | Queue beyond limit |
+| API Calls | 1000/hour | 10000/hour | 100000/hour | Token bucket |
+| Data Transfer | 1GB/day | 50GB/day | 500GB/day | Metered billing |
+| Team Members | 1 | 5 | Unlimited | License check |
+| Model Versions | 3 | 20 | Unlimited | Storage quota |
+| Export Size | 10MB | 1GB | 10GB | Compression + chunking |
+
+---
+
+## Implementation Examples
+
+### Path Constraint Validation
+```python
+def validate_file_access(path, operation, user_context):
+    # Check against allowed scopes
+    if not any(path.startswith(scope) for scope in ALLOWED_SCOPES[operation]):
+        raise AccessDenied(f"Path {path} not allowed for {operation}")
+    
+    # Check specific constraints
+    if operation == "WRITE" and getsize(path) > MAX_WRITE_SIZE:
+        raise QuotaExceeded("File too large")
+    
+    # Verify user permissions
+    if not user_context.has_permission(f"file.{operation}"):
+        raise AccessDenied("Insufficient permissions")
+    
+    return True
+
+```
+
+### Server Access Control
+
+```
+server_access_rules:
+  production:
+    allowed_ips: ["10.2.0.0/16", "bastion.prod.internal"]
+    allowed_ports: [443]
+    required_auth: ["client_cert", "mfa"]
+    schedule: "with_change_ticket"
+    rate_limit: "100/second"
+    audit_level: "HIGH"
+```
+
+### Model Access Policy
+
+```
+{
+  "model_id": "llm-v2",
+  "access_control": {
+    "inference": {
+      "max_tokens": 2048,
+      "max_batch": 32,
+      "rate_limit": "100/minute",
+      "cost_per_inference": 0.001
+    },
+    "training": {
+      "allowed": false,
+      "reason": "Proprietary weights"
+    },
+    "export": {
+      "allowed": true,
+      "requires_approval": true,
+      "format": ["onnx", "torchscript"]
+    }
+  }
+}
+```
+
+
 ---
 
 ## 1. Core Security Principles
